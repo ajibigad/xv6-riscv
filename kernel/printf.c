@@ -122,6 +122,7 @@ panic(char *s)
   printf("panic: ");
   printf(s);
   printf("\n");
+  backtrace();
   panicked = 1; // freeze uart output from other CPUs
   for(;;)
     ;
@@ -132,4 +133,19 @@ printfinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
+}
+
+void backtrace() {
+  //fetch and print s0/fp of current function's stackframe
+  //fp - 8 points to the return address of caller so *(fp - 8) == ra of caller
+  //fp - 16 points the frame pointer of caller so *(fp - 16) == fp of caller
+  uint64 fp = r_fp();
+  while(PGROUNDUP(fp) != fp){
+    printf("%p\n", *((uint64*)(fp - 8)));
+
+    // first cast the pointer fp - 16 to a uint64 pointer 
+    // then dereference to get the uint64 value of the caller's fp
+    // then finally cast caller's fp to a char* to make it byte addressable
+    fp = *(uint64*)(fp - 16);
+  }
 }

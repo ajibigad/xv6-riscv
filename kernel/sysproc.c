@@ -68,6 +68,7 @@ sys_sleep(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+  backtrace();
   return 0;
 }
 
@@ -179,4 +180,34 @@ sys_pgaccess(void) {
 uint64
 sys_pgdirty(void) {
   return pgflagcheck(PTE_D, 1);
+}
+
+uint64
+sys_sigalarm(void) {
+  int interval;
+  uint64 handler; // virtual address to the user process' alarm handler
+  struct proc *p = myproc();
+
+  argint(0, &interval);
+  argaddr(1, &handler);
+
+  p->alarminterval = interval;
+  p->alarmhandler = handler;
+  p->alarmnexttick = ticks + p->alarminterval;
+  return 0;
+}
+
+uint64
+sys_sigreturn(void) {
+  struct proc *p = myproc();
+
+  // restore process trapframe to state it was before being interrupted by the alarm
+  *(p->trapframe) = *(p->alarmtrapframe);
+
+  p->alarmhandlerstate = 0; // set alarm handler state to not running
+
+  // return the value of a0 before the process was interrupted
+  // This because syscall in syscall.c sets a0 to the return value of the syscall
+  // and we want the value of a0 to be the same as it was before the alarm interrupted the process
+  return p->trapframe->a0;
 }

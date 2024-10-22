@@ -16,6 +16,8 @@ void kernelvec();
 
 extern int devintr();
 
+void handlealarm(struct proc *p);
+
 void
 trapinit(void)
 {
@@ -76,9 +78,14 @@ usertrap(void)
   if(killed(p))
     exit(-1);
 
-  // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  // timer interrupt
+  if(which_dev == 2){
+    handlealarm(p);
+
+    // give up the CPU if this is a timer interrupt.
     yield();
+  }
+    
 
   usertrapret();
 }
@@ -216,6 +223,22 @@ devintr()
     return 2;
   } else {
     return 0;
+  }
+}
+
+// Check if the interval is set, the alarm handler is not currently running and the alarm interval has passed
+// if so, start the alarm handler.
+// Should only be called during timer interrupt
+void handlealarm(struct proc *p) {
+  if (p->alarminterval > 0 && p->alarmhandlerstate != 1 && ticks > p->alarmnexttick) {
+    p->alarmhandlerstate = 1; // set alarm handler state to running
+    p->alarmnexttick = ticks + p->alarminterval; // set the next expected tick time
+
+    // save the process current trapframe in the alarmtrapframe
+    *(p->alarmtrapframe) = *(p->trapframe);
+
+    // point pc to the alarm handler
+    p->trapframe->epc = p->alarmhandler;
   }
 }
 

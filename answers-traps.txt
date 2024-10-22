@@ -1,0 +1,83 @@
+- Which registers contain arguments to functions? Answer: a0, a1 and a2
+	- For example, which register holds 13 in main's call to printf? Answer: a2 holds the arg 13
+- Where is the call to function f in the assembly code for main? 
+	Where is the call to g? (Hint: the compiler may inline functions.) 
+	Answer: The functions were optimized out by the compiler, it figured the result of f(8)+1 is 12 so i just set reg a1 to 12 so no function calls
+- At what address is the function printf located? Answer: 0x169e
+- What value is in the register ra just after the jalr to printf in main? 
+	Answer: 0x105e The address of the next instruction after jalr
+- Run the following code.
+
+	unsigned int i = 0x00646c72;
+	printf("H%x Wo%s", 57616, &i);
+      
+What is the output? Here's an ASCII table that maps bytes to characters.
+	Answer: Out put is HE110 World
+	Analysis: Address of i was stored in register a2. The address was 0x4fbc
+		(gdb) x/1wx $a2 -> read the content of address 0x4fbc, one word/32bits/4bytes
+		0x4fbc: 0x00646c72
+		(gdb) x/1bx $a2 -> read the first byte in addr 0x4fbc. This shows risv stores bytes in little endian order
+		0x4fbc: 0x72
+		(gdb) x/1bx $a2+1 -> read second byte
+		0x4fbd: 0x6c
+		(gdb) x/1bx $a2+2 -> read third byte
+		0x4fbe: 0x64
+		(gdb) x/1bx $a2+3 -> read last byte
+		0x4fbf: 0x00
+		- So printf will read the bytes from that addr as 0x72 ('r'), 0x6c ('l'), 0x64 ('d'), 0x00 (Null terminator')
+
+The output depends on that fact that the RISC-V is little-endian. 
+	If the RISC-V were instead big-endian what would you set "i" to in order to yield the same output? 
+		Answer: "i" will need to be reversed to 0x726c6400 as the bytes will be stored in this order.
+	Would you need to change 57616 to a different value? 
+		Answer: No since it is an intermediate value. It will be stored in a register so the value will be read as stored
+- In the following code, what is going to be printed after 'y='? (note: the answer is not a specific value.) Why does this happen?
+	printf("x=%d y=%d", 3);
+	Answer: This prints "x=3 y=1". 
+		This is because printf expects to find it's args in registers a0, a1 and a2
+		Only a0 (contains the string format), and a1 (contains 3) were set so when looking for the 3rd arg due to "y=%d" it will print what ever is in register a2 which just happeded to be 1 after the previous printf statement was completed
+
+Backtrace
+Useful for viewing te layout of a stack https://pdos.csail.mit.edu/6.828/2021/lec/l-riscv-slides.pdf 
+
+The stack pointer moves as data is pushed or popped from the stack, keeping track of the top of the stack. 
+	It is the lowest address in the stack.
+	Usually saved in the sp register.
+The frame pointer is typically fixed during a function’s execution, providing a stable reference point within a function's stack frame for accessing local variables and parameters. 
+	It is usually set up at the beginning of a function and remains the same throughout the function's execution.
+	Usually saved in the s0 register.
+	For MIT xv6 OS, fp is the highest address in the stack frame
+
+Stack layout process 
+ - allocate space in stack to save caller's return address and frame pointer
+ - saved return address of caller
+ - saved frame pointer of caller
+ - stack pointer and frame pointer of callee saved in sp and s0 respectively.
+ - sp can then be increased to allocated space for local variables and passed in args (for cases where args are more than available registers). 
+
+Stack layout (32 bytes stack)
+ 24 caller ra
+ 16 caller s0
+ 8 local variable1
+ 0 local variable2
+ fp = sp + 32 = 32, this means fp is the highest address in the stack.
+	Therefore return address of caller = fp - 8 = 24
+	frame pointer of the caller = fp - 16 = 16
+ sp points to the current top of the stack which is 0
+
+The stack pointer (sp) itself must be 16-byte aligned, not necessarily the individual items (like s0) saved on the stack.
+	This means when entering or leaving a function, the sp should always be divisible by 16.
+
+Backtrace answer
+riscv64-unknown-elf-addr2line -e kernel/kernel
+0x000000008000313e
+0x0000000080002e7e
+0x0000000080002b72
+
+/Users/ajibigad/Playground/OSPlayground/xv6-riscv/kernel/sysproc.c:72
+/Users/ajibigad/Playground/OSPlayground/xv6-riscv/kernel/syscall.c:195 (discriminator 1)
+/Users/ajibigad/Playground/OSPlayground/xv6-riscv/kernel/trap.c:76
+
+Alarms
+create sigalarm(interval, handler), handler should be called after every n intervals then process should resume
+sigalarm(0, 0) -> kernel should stop generating alarms calls

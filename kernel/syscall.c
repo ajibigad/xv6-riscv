@@ -74,6 +74,7 @@ argint(int n, int *ip)
 // Retrieve an argument as a pointer.
 // Doesn't check for legality, since
 // copyin/copyout will do that.
+// Basically returns a user space virtual memory. To read/write to this address, you will need to use copyin/copyout and provide the process' pagetable
 // for example if syscall is sys_info(&sysinfostruct) or sys_info(sys_info_ptr) where struct sysinfo* sys_info_ptr = &sysinfostruct, 
 //   argaddr will copy the virtual address of sysinfostruct from user space into arg_addr variable in kernel space
 //   We can then copy data from kernel mem space into user space by calling copyout and passing this userspace vmem address as the dest and also provide the user space process pagetable
@@ -120,6 +121,8 @@ extern uint64 sys_trace(void);
 extern uint64 sys_info(void);
 extern uint64 sys_pgaccess(void);
 extern uint64 sys_pgdirty(void);
+extern uint64 sys_sigalarm(void);
+extern uint64 sys_sigreturn(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -149,6 +152,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_sysinfo] sys_info,
 [SYS_pgaccess] sys_pgaccess,
 [SYS_pgdirty] sys_pgdirty,
+[SYS_sigalarm] sys_sigalarm,
+[SYS_sigreturn] sys_sigreturn,
 };
 
 static char* syscall_names[] = {
@@ -177,6 +182,8 @@ static char* syscall_names[] = {
   [SYS_sysinfo] "sysinfo",
   [SYS_pgaccess] "pgaccess",
   [SYS_pgdirty] "pgdirty",
+  [SYS_sigalarm] "sigalarm",
+  [SYS_sigreturn] "sigreturn",
 };
 
 _Static_assert(NELEM(syscalls) == NELEM(syscall_names), "syscalls and syscall_names count do not match.");

@@ -46,10 +46,12 @@ How the riscv hardware/processor handles traps
 
 How traps from user space are handled by uservec
 - Gets the address of user process trapframe from sscratch register by swapping a0 and sscratch, so the user's value for a0 is now stored in sscratch while the process's trapframe address is now stores in a0.
-- Reads all registers except a0 (because if not longer contains the user's actual value due to the swap above) and saves their values into the process's trapframe using the trapframe address in a0. The user's actual value of a0 is read from sscratch and store in trapframe->a0
+- Reads all registers except a0 (because if no longer contains the user's actual value due to the swap above) and saves their values into the process's trapframe using the trapframe address in a0. The user's actual value of a0 is read from sscratch and store in trapframe->a0
 - switch to the kernel pagetable by reading the kernel pagetable address from the trapframe and set the satp register to this value
 - reads the address of usertrap from the trapframe and calls usertrap
 
+This shows the transitions during interrupt handling, showing the pages used(user or kernel), 
+the mode kmode or umode, trampoline or trap, and lastly which user program is runnning
 u->k page  kpage       kpage          k->u page  
 kmode	   kmode       kmode          kmode
 trampoline trap        trap           trampoline
@@ -89,6 +91,7 @@ user trap handling code workthrough.
 
 - uservec in trampoline.S
  - backup all user registers into trapframe before handling trap
+	 - uservec is able to access the address of the trapframe because the constant TRAPFRAME is the same va in all process
 	 - save reg a0 in sscratch reg. It will be saved later in the trapframe
 	 - store TRAPFRAME into a0. a0 = TRAPFRAME. TRAPFRAME is a constant uint64 that is the vaddr of every process' trapframe
 	 - save all user registers except a0 into the trapframe(now in a0 reg). 
@@ -134,3 +137,37 @@ user trap handling code workthrough.
 		- this will switch to user mode
 		- enable interrupts in user mode
 		- set pc to sepc then the processor will execute whatever is in pc
+
+csrr - read
+cswr - write
+csrw - swap
+
+stacktrace image
+chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://pdos.csail.mit.edu/6.828/2021/lec/l-riscv-slides.pdf 
+fp/s0 register: the top of the current frame
+sp - bottom of the stack
+ra - return address
+
+User process page table / virtual memory setup. proc.c -> proc_pagetable
+- Empty page table is created
+- The trampoline code has been stored in a physical address. 
+- The physical address is then mapped to the trampoline page table virtual address which is the highest virtual address in 
+	the user process page table.
+	- note that in kvmmake the trampoline code physical address is mapped to the same TRAMPOLINE address in the kernel's pagetable.
+	- so if  TRAMPOLINE is 0x200000, then this address with point to the trampoline.S code physical address in both user and kernel pagetables
+- Next, the physical address of process trapframe is mapped to a page under the trampoline page in the user virtual memory
+- The physical address/page of the trapframe was created in allocproc. This is the page that is then mapped in the user virtual memory
+
+trapframe
+- Created as a page under the trampoline page in user vm
+- During an interrupt from user space, it is used by uservec to save all registers of the interrupted process 
+	before handing over control to usertrap handler defined in kernel_trap in the trapframe by usertrapret
+- The data stored in the trapframe is restored to the registers by userret before the interrupted process is resumed
+
+
+Important note on the value of PC during different types of interrupts
+- For synchronous exceptions (like ecall or page faults), the PC points to the faulting or trapping instruction. 
+	The kernel must decide what to do with the PC based on the type of exception.
+		- For ecall, the kernel explicitly increments the PC by 4 to skip the ecall instruction after processing it.
+- For asynchronous interrupts (like timer interrupts or external device interrupts), the interrupt occurs between instructions, 
+	so the PC automatically points to the next instruction to execute. 

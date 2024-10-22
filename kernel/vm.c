@@ -403,9 +403,11 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 }
 
 // Copy a null-terminated string from user to kernel.
-// Copy bytes to dst from virtual address srcva in a given page table,
-// until a '\0', or max.
+// Copy bytes to `dst` from virtual address `srcva` in a given page table, until a '\0', or max.
 // Return 0 on success, -1 on error.
+// copyinstr: copy in string
+// srvca: source virtual address
+// dst: destination
 int
 copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 {

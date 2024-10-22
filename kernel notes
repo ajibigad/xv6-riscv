@@ -129,9 +129,23 @@ vaddr            paddr            size             attr
 0000000000003000 0000000087f53000 0000000000001000 rw-u-ad data
 0000000000004000 0000000087f52000 0000000000001000 rw----- stack guard
 0000000000005000 0000000087f51000 0000000000001000 rw-u-ad stack
-0000003fffffd000 0000000087f72000 0000000000001000 r--u--- usyscall
+0000003fffffd000 0000000087f72000 0000000000001000 r--u--- usyscall struct
 0000003fffffe000 0000000087f6c000 0000000000001000 rw---ad trapframe
 0000003ffffff000 0000000080007000 0000000000001000 r-x--a- trampoline
+
+Sections of _sh program
+riscv64-unknown-elf-objdump -p user/_sh
+user/_sh:     file format elf64-littleriscv
+
+Program Header:
+0x70000003 off    0x000000000000befb vaddr 0x0000000000000000 paddr 0x0000000000000000 align 2**0
+         filesz 0x0000000000000047 memsz 0x0000000000000000 flags r--
+    LOAD off    0x0000000000001000 vaddr 0x0000000000001000 paddr 0x0000000000001000 align 2**12
+         filesz 0x0000000000002000 memsz 0x0000000000002000 flags r-x
+    LOAD off    0x0000000000003000 vaddr 0x0000000000003000 paddr 0x0000000000003000 align 2**12
+         filesz 0x0000000000000010 memsz 0x0000000000000098 flags rw-
+
+Layouts: https://pdos.csail.mit.edu/6.828/2021/lec/l-riscv-slides.pdf 
 
 user process memory layout
 text
@@ -148,10 +162,3 @@ text -> starts at 0x80000000
 data
 kernel stack for each process. each stack has a stack guard
 trampoline
-
-Homework
-- Your job is to implement pgaccess(), a system call that reports which pages have been accessed
-- The system call takes three arguments
-	- the starting virtual address of the first user page to check
-	- the number of pages to check
-	- a user address to a buffer to store the results into a bitmask where each bit represents a page and the first page is the LSB

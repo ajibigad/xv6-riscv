@@ -40,3 +40,5 @@ entry("trace");
 entry("sysinfo");
 entry("pgaccess");
 entry("pgdirty");
+entry("sigalarm");
+entry("sigreturn");

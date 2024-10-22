@@ -141,6 +141,13 @@ found:
   }
   p->usyscall->pid = p->pid;
 
+  //Allocate a page for alarm trap frame page
+  if((p->alarmtrapframe = (struct trapframe *)kalloc()) == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  } 
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -167,12 +174,19 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+
   if(p->usyscall)
     kfree((void*)p->usyscall);
   p->usyscall = 0;
+
+  if(p->alarmtrapframe)
+    kfree((void*)p->alarmtrapframe);
+  p->alarmtrapframe = 0;
+
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
+
   p->sz = 0;
   p->pid = 0;
   p->parent = 0;
@@ -181,6 +195,10 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  p->alarminterval = 0;
+  p->alarmhandler = 0;
+  p->alarmnexttick = 0;
+  p->alarmhandlerstate = 0;
 }
 
 // Create a user page table for a given process, with no user memory,

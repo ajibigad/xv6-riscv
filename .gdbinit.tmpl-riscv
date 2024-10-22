@@ -4,5 +4,6 @@ target remote 127.0.0.1:1234
 symbol-file kernel/kernel
 add-symbol-file user/_init 0x1000
 add-symbol-file user/_sh 0x1000
+add-symbol-file user/_call 0x1000
 set disassemble-next-line auto
 set riscv use-compressed-breakpoints yes

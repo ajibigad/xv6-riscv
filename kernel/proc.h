@@ -104,6 +104,11 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  int tracemask;               // to enable syscall tracing
-  struct usyscall *usyscall;
+  int tracemask;               // To enable syscall tracing
+  struct usyscall *usyscall;   // Page to save process info so it can be read from user space
+  int alarminterval;
+  uint64 alarmhandler;
+  uint alarmnexttick;          // Next time the alarm handler should be called 
+  uint alarmhandlerstate;      // 0 - NOT RUNNING, 1 - RUNNING
+  struct trapframe *alarmtrapframe; // data page for alarm trapframe
 };
